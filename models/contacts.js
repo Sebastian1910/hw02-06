@@ -1,53 +1,86 @@
-const fs = require("fs").promises;
-const path = require("path");
-const { v4: uuidv4 } = require("uuid");
-
-const contactsPath = path.join(__dirname, "./contacts.json");
+const Contact = require("./contact"); // Import modelu
 
 const listContacts = async () => {
-  const data = await fs.readFile(contactsPath, "utf-8");
-  return JSON.parse(data);
+  try {
+    const contacts = await Contact.find();
+    return contacts;
+  } catch (error) {
+    console.error("Error listing contacts:", error.message);
+    throw error;
+  }
 };
 
 const getContactById = async (contactId) => {
-  const contacts = await listContacts();
-  return contacts.find((contact) => contact.id === contactId) || null;
-};
-
-const removeContact = async (contactId) => {
-  let contacts = await listContacts();
-  const index = contacts.findIndex((contact) => contact.id === contactId);
-  if (index === -1) {
-    return null;
+  try {
+    const contact = await Contact.findById(contactId);
+    return contact || null;
+  } catch (error) {
+    console.error(`Error getting contact with ID ${contactId}:`, error.message);
+    throw error;
   }
-  const [removedContact] = contacts.splice(index, 1);
-  await fs.writeFile(contactsPath, JSON.stringify(contacts, null, 2));
-  return removedContact;
 };
 
 const addContact = async (body) => {
-  const contacts = await listContacts();
-  const newContact = { id: uuidv4(), ...body };
-  contacts.push(newContact);
-  await fs.writeFile(contactsPath, JSON.stringify(contacts, null, 2));
-  return newContact;
+  try {
+    const newContact = new Contact(body);
+    await newContact.save();
+    return newContact;
+  } catch (error) {
+    console.error("Error adding contact:", error.message);
+    throw error;
+  }
+};
+
+const removeContact = async (contactId) => {
+  try {
+    const contact = await Contact.findByIdAndRemove(contactId);
+    return contact || null;
+  } catch (error) {
+    console.error(
+      `Error removing contact with ID ${contactId}:`,
+      error.message
+    );
+    throw error;
+  }
 };
 
 const updateContact = async (contactId, body) => {
-  let contacts = await listContacts();
-  const index = contacts.findIndex((contact) => contact.id === contactId);
-  if (index === -1) {
-    return null;
+  try {
+    const contact = await Contact.findByIdAndUpdate(contactId, body, {
+      new: true,
+    });
+    return contact || null;
+  } catch (error) {
+    console.error(
+      `Error updating contact with ID ${contactId}:`,
+      error.message
+    );
+    throw error;
   }
-  contacts[index] = { ...contacts[index], ...body };
-  await fs.writeFile(contactsPath, JSON.stringify(contacts, null, 2));
-  return contacts[index];
+};
+
+const updateStatusContact = async (contactId, body) => {
+  try {
+    const contact = await Contact.findByIdAndUpdate(
+      contactId,
+      { favorite: body.favorite },
+      { new: true }
+    );
+    return contact || null;
+  } catch (error) {
+    console.error(
+      `Error updating favorite status for contact with ID ${contactId}:`,
+      error.message
+    );
+    throw error;
+  }
 };
 
 module.exports = {
   listContacts,
   getContactById,
-  removeContact,
   addContact,
+  removeContact,
   updateContact,
+  updateStatusContact,
 };
