@@ -1,8 +1,11 @@
-const Contact = require("./contact"); // Import modelu
+const Contact = require("./contact");
 
-const listContacts = async () => {
+const listContacts = async (filter) => {
   try {
-    const contacts = await Contact.find();
+    const contacts = await Contact.find(filter).populate(
+      "owner",
+      "email subscription"
+    );
     return contacts;
   } catch (error) {
     console.error("Error listing contacts:", error.message);
@@ -10,9 +13,9 @@ const listContacts = async () => {
   }
 };
 
-const getContactById = async (contactId) => {
+const getContactById = async (contactId, owner) => {
   try {
-    const contact = await Contact.findById(contactId);
+    const contact = await Contact.findOne({ _id: contactId, owner });
     return contact || null;
   } catch (error) {
     console.error(`Error getting contact with ID ${contactId}:`, error.message);
@@ -31,9 +34,9 @@ const addContact = async (body) => {
   }
 };
 
-const removeContact = async (contactId) => {
+const removeContact = async (contactId, owner) => {
   try {
-    const contact = await Contact.findByIdAndRemove(contactId);
+    const contact = await Contact.findOneAndRemove({ _id: contactId, owner });
     return contact || null;
   } catch (error) {
     console.error(
@@ -44,11 +47,13 @@ const removeContact = async (contactId) => {
   }
 };
 
-const updateContact = async (contactId, body) => {
+const updateContact = async (contactId, body, owner) => {
   try {
-    const contact = await Contact.findByIdAndUpdate(contactId, body, {
-      new: true,
-    });
+    const contact = await Contact.findOneAndUpdate(
+      { _id: contactId, owner },
+      body,
+      { new: true }
+    );
     return contact || null;
   } catch (error) {
     console.error(
@@ -59,10 +64,10 @@ const updateContact = async (contactId, body) => {
   }
 };
 
-const updateStatusContact = async (contactId, body) => {
+const updateStatusContact = async (contactId, body, owner) => {
   try {
-    const contact = await Contact.findByIdAndUpdate(
-      contactId,
+    const contact = await Contact.findOneAndUpdate(
+      { _id: contactId, owner },
       { favorite: body.favorite },
       { new: true }
     );

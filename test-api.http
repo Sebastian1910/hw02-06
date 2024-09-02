@@ -1,1 +1,59 @@
-GET http://localhost:3000/api/contacts/: 66ce18bab63c2aa01574baca
+# Rejestracja użytkownika
+POST http://localhost:3000/api/users/signup
+Content-Type: application/json
+
+{
+  "email": "example@example.com",
+  "password": "examplepassword"
+}
+
+###
+
+# Logowanie użytkownika
+POST http://localhost:3000/api/users/login
+Content-Type: application/json
+
+{
+  "email": "example@example.com",
+  "password": "examplepassword"
+}
+
+###
+
+# Pobranie obecnego użytkownika
+GET http://localhost:3000/api/users/current
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDBiM2NiYTAyNzY4NGU4OWU4MGJhYyIsImlhdCI6MTcyNTE4NjI4MywiZXhwIjoxNzI1MTg5ODgzfQ.D5Gfg93skeHpXU53vCIQpzEZbU7ivPz0BgbTHmV5q8E
+###
+
+# Wylogowanie użytkownika
+GET http://localhost:3000/api/users/logout
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDBiM2NiYTAyNzY4NGU4OWU4MGJhYyIsImlhdCI6MTcyNDk1NTU3OSwiZXhwIjoxNzI0OTU5MTc5fQ.qF4jH0CKpbaivqryJ0zsstNBU1lGIpJL5kgdxlhsT7Q
+
+###
+
+# Pobranie wszystkich kontaktów
+GET http://localhost:3000/api/contacts
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDBiM2NiYTAyNzY4NGU4OWU4MGJhYyIsImlhdCI6MTcyNTE4NjI4MywiZXhwIjoxNzI1MTg5ODgzfQ.D5Gfg93skeHpXU53vCIQpzEZbU7ivPz0BgbTHmV5q8E
+###
+
+# Dodanie nowego kontaktu
+POST http://localhost:3000/api/contacts
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDBiM2NiYTAyNzY4NGU4OWU4MGJhYyIsImlhdCI6MTcyNTE4NjI4MywiZXhwIjoxNzI1MTg5ODgzfQ.D5Gfg93skeHpXU53vCIQpzEZbU7ivPz0BgbTHmV5q8E
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "johndoe@example.com",
+  "phone": "(123) 456-7890"
+}
+
+###
+
+# Aktualizacja statusu "favorite" kontaktu
+PATCH http://localhost:3000/api/contacts/:id/favorite
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDBiM2NiYTAyNzY4NGU4OWU4MGJhYyIsImlhdCI6MTcyNTE4NjI4MywiZXhwIjoxNzI1MTg5ODgzfQ.D5Gfg93skeHpXU53vCIQpzEZbU7ivPz0BgbTHmV5q8E
+Content-Type: application/json
+
+{
+  "favorite": true
+}
