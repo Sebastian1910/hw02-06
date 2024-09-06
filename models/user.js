@@ -1,21 +1,21 @@
-const mongoose = require("mongoose");
-const { Schema, model } = mongoose;
+const { Schema, model } = require("mongoose");
 
 const userSchema = new Schema({
-  password: {
-    type: String,
-    required: [true, "Password is required"],
-  },
   email: {
     type: String,
     required: [true, "Email is required"],
     unique: true,
+  },
+  password: {
+    type: String,
+    required: [true, "Password is required"],
   },
   subscription: {
     type: String,
     enum: ["starter", "pro", "business"],
     default: "starter",
   },
+  avatarURL: String,
   token: {
     type: String,
     default: null,
