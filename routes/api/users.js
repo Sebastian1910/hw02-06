@@ -104,4 +104,53 @@ router.post("/login", async (req, res, next) => {
   }
 });
 
+// Aktualizacja awatara użytkownika
+router.patch(
+  "/avatars",
+  auth,
+  upload.single("avatar"),
+  async (req, res, next) => {
+    try {
+      const { path: tempUpload, filename } = req.file;
+      const filePath = path.join(avatarsDir, filename);
+
+      const image = await Jimp.read(tempUpload);
+      await image.resize(250, 250).writeAsync(filePath);
+
+      await fs.unlink(tempUpload);
+
+      const avatarURL = `/avatars/${filename}`;
+      req.user.avatarURL = avatarURL;
+      await req.user.save();
+
+      res.json({ avatarURL });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Wylogowanie użytkownika
+router.get("/logout", auth, async (req, res, next) => {
+  try {
+    const user = req.user;
+    user.token = null;
+    await user.save();
+
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Pobieranie danych obecnego użytkownika
+router.get("/current", auth, async (req, res, next) => {
+  try {
+    const { email, subscription } = req.user;
+    res.status(200).json({ email, subscription });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

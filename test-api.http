@@ -18,26 +18,26 @@ Content-Type: application/json
 
 ### Pobranie obecnego użytkownika
 GET http://localhost:3000/api/users/current
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDBiM2NiYTAyNzY4NGU4OWU4MGJhYyIsImlhdCI6MTcyNTYyODAzMywiZXhwIjoxNzI1NjMxNjMzfQ.bTaaydCIs5fTKPLfLUCbXX8snUR08Mam6ciLMqnMWsA
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDBiM2NiYTAyNzY4NGU4OWU4MGJhYyIsImlhdCI6MTcyNTY5ODE5MCwiZXhwIjoxNzI1NzAxNzkwfQ.4axCP9rXvT2n0x4SChdJP1sMLPSCusBfwFXel52hRkw
 
 ### Aktualizacja awatara
 PATCH http://localhost:3000/api/users/avatars
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDBiM2NiYTAyNzY4NGU4OWU4MGJhYyIsImlhdCI6MTcyNTYyODAzMywiZXhwIjoxNzI1NjMxNjMzfQ.bTaaydCIs5fTKPLfLUCbXX8snUR08Mam6ciLMqnMWsA
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDBiM2NiYTAyNzY4NGU4OWU4MGJhYyIsImlhdCI6MTcyNTY5ODE5MCwiZXhwIjoxNzI1NzAxNzkwfQ.4axCP9rXvT2n0x4SChdJP1sMLPSCusBfwFXel52hRkw
 Content-Type: multipart/form-data
 
 @./path_to_your_image_file.png
 
 ### Dodanie nowego kontaktu
 POST http://localhost:3000/api/contacts
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDBiM2NiYTAyNzY4NGU4OWU4MGJhYyIsImlhdCI6MTcyNTYyODAzMywiZXhwIjoxNzI1NjMxNjMzfQ.bTaaydCIs5fTKPLfLUCbXX8snUR08Mam6ciLMqnMWsA
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDBiM2NiYTAyNzY4NGU4OWU4MGJhYyIsImlhdCI6MTcyNTY5ODE5MCwiZXhwIjoxNzI1NzAxNzkwfQ.4axCP9rXvT2n0x4SChdJP1sMLPSCusBfwFXel52hRkw
 Content-Type: application/json
 
 {
-  "name": "Jan Kowalski",
+  "name": "Pan Kowalski",
   "email": "jkowal@example.com",
   "phone": "553456789"
 }
 
 ### Pobranie wszystkich kontaktów
 GET http://localhost:3000/api/contacts
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDBiM2NiYTAyNzY4NGU4OWU4MGJhYyIsImlhdCI6MTcyNTYyODAzMywiZXhwIjoxNzI1NjMxNjMzfQ.bTaaydCIs5fTKPLfLUCbXX8snUR08Mam6ciLMqnMWsA
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDBiM2NiYTAyNzY4NGU4OWU4MGJhYyIsImlhdCI6MTcyNTY5ODE5MCwiZXhwIjoxNzI1NzAxNzkwfQ.4axCP9rXvT2n0x4SChdJP1sMLPSCusBfwFXel52hRkw

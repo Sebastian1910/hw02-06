@@ -2,30 +2,20 @@ const express = require("express");
 const cors = require("cors");
 const logger = require("morgan");
 const dotenv = require("dotenv");
-const mongoose = require("mongoose");
+const connectDB = require("./config/db"); // Importujemy logikę do obsługi MongoDB
 
 // Ładowanie zmiennych środowiskowych z pliku .env
 dotenv.config();
 
+// Trasy
 const usersRouter = require("./routes/api/users");
-const contactsRouter = require("./routes/api/contacts"); // Trasy do kontaktów
+const contactsRouter = require("./routes/api/contacts");
 
 // Tworzenie aplikacji Express
 const app = express();
 
 // Połączenie z MongoDB
-mongoose
-  .connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => {
-    console.log("Database connection successful");
-  })
-  .catch((error) => {
-    console.error("Database connection error:", error.message);
-    process.exit(1);
-  });
+connectDB(); // Teraz MongoDB jest zarządzane z osobnego pliku
 
 // Ustawienia logowania dla różnych środowisk (development/production)
 const formatsLogger = app.get("env") === "development" ? "dev" : "short";
