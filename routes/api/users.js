@@ -1,6 +1,11 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const gravatar = require("gravatar");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs/promises");
+const Jimp = require("jimp");
 const User = require("../../models/user");
 const auth = require("../../middleware/auth");
 const Joi = require("joi");
@@ -16,6 +21,20 @@ const subscriptionSchema = Joi.object({
   subscription: Joi.string().valid("starter", "pro", "business").required(),
 });
 
+const tmpDir = path.join(__dirname, "../../tmp");
+const avatarsDir = path.join(__dirname, "../../public/avatars");
+
+const storage = multer.diskStorage({
+  destination: tmpDir,
+  filename: (req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${file.originalname}`;
+    cb(null, uniqueSuffix);
+  },
+});
+
+const upload = multer({ storage });
+
+// Rejestracja użytkownika
 router.post("/signup", async (req, res, next) => {
   try {
     const { error } = signupSchema.validate(req.body);
@@ -30,17 +49,20 @@ router.post("/signup", async (req, res, next) => {
       return res.status(409).json({ message: "Email in use" });
     }
 
+    const avatarURL = gravatar.url(email, { s: "250", d: "retro" }, true);
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = await User.create({
       email,
       password: hashedPassword,
+      avatarURL,
     });
 
     res.status(201).json({
       user: {
         email: newUser.email,
         subscription: newUser.subscription,
+        avatarURL: newUser.avatarURL,
       },
     });
   } catch (error) {
@@ -48,6 +70,7 @@ router.post("/signup", async (req, res, next) => {
   }
 });
 
+// Logowanie użytkownika
 router.post("/login", async (req, res, next) => {
   try {
     const { error } = signupSchema.validate(req.body);
@@ -81,6 +104,33 @@ router.post("/login", async (req, res, next) => {
   }
 });
 
+// Aktualizacja awatara użytkownika
+router.patch(
+  "/avatars",
+  auth,
+  upload.single("avatar"),
+  async (req, res, next) => {
+    try {
+      const { path: tempUpload, filename } = req.file;
+      const filePath = path.join(avatarsDir, filename);
+
+      const image = await Jimp.read(tempUpload);
+      await image.resize(250, 250).writeAsync(filePath);
+
+      await fs.unlink(tempUpload);
+
+      const avatarURL = `/avatars/${filename}`;
+      req.user.avatarURL = avatarURL;
+      await req.user.save();
+
+      res.json({ avatarURL });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Wylogowanie użytkownika
 router.get("/logout", auth, async (req, res, next) => {
   try {
     const user = req.user;
@@ -93,30 +143,11 @@ router.get("/logout", auth, async (req, res, next) => {
   }
 });
 
+// Pobieranie danych obecnego użytkownika
 router.get("/current", auth, async (req, res, next) => {
   try {
     const { email, subscription } = req.user;
     res.status(200).json({ email, subscription });
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.patch("/", auth, async (req, res, next) => {
-  try {
-    const { error } = subscriptionSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ message: error.details[0].message });
-    }
-
-    const { subscription } = req.body;
-    const user = req.user;
-    user.subscription = subscription;
-    await user.save();
-
-    res
-      .status(200)
-      .json({ email: user.email, subscription: user.subscription });
   } catch (error) {
     next(error);
   }

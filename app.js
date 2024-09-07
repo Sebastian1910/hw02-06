@@ -1,39 +1,45 @@
-require("dotenv").config();
 const express = require("express");
-const logger = require("morgan");
 const cors = require("cors");
-const mongoose = require("mongoose");
+const logger = require("morgan");
+const dotenv = require("dotenv");
+const connectDB = require("./config/db"); // Importujemy logikę do obsługi MongoDB
 
-const contactsRouter = require("./routes/api/contacts");
+// Ładowanie zmiennych środowiskowych z pliku .env
+dotenv.config();
+
+// Trasy
 const usersRouter = require("./routes/api/users");
+const contactsRouter = require("./routes/api/contacts");
 
+// Tworzenie aplikacji Express
 const app = express();
 
+// Połączenie z MongoDB
+connectDB(); // Teraz MongoDB jest zarządzane z osobnego pliku
+
+// Ustawienia logowania dla różnych środowisk (development/production)
 const formatsLogger = app.get("env") === "development" ? "dev" : "short";
 
-mongoose
-  .connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("Database connection successful"))
-  .catch((err) => {
-    console.error("Database connection error:", err.message);
-    process.exit(1);
-  });
-
+// Middleware
 app.use(logger(formatsLogger));
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/contacts", contactsRouter);
-app.use("/api/users", usersRouter);
+// Serwowanie statycznych plików z folderu "public"
+app.use(express.static("public"));
 
+// Rejestrowanie tras użytkowników i kontaktów
+app.use("/api/users", usersRouter);
+app.use("/api/contacts", contactsRouter); // Trasy kontaktów
+
+// Obsługa błędu 404
 app.use((req, res) => {
   res.status(404).json({ message: "Not found" });
 });
 
+// Middleware obsługi błędów
 app.use((err, req, res, next) => {
+  console.error(err.stack);
   res.status(500).json({ message: err.message });
 });
 
