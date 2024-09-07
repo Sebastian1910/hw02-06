@@ -1,83 +1,30 @@
 const express = require("express");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const gravatar = require("gravatar");
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs/promises");
-const Jimp = require("jimp");
+const bcrypt = require("bcryptjs"); // Biblioteka do haszowania haseł
+const jwt = require("jsonwebtoken"); // JWT do autoryzacji
 const User = require("../../models/user");
-const auth = require("../../middleware/auth");
-const Joi = require("joi");
-
 const router = express.Router();
-
-const signupSchema = Joi.object({
-  email: Joi.string().email().required(),
-  password: Joi.string().min(6).required(),
-});
-
-const subscriptionSchema = Joi.object({
-  subscription: Joi.string().valid("starter", "pro", "business").required(),
-});
-
-const tmpDir = path.join(__dirname, "../../tmp");
-const avatarsDir = path.join(__dirname, "../../public/avatars");
-
-const storage = multer.diskStorage({
-  destination: tmpDir,
-  filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${file.originalname}`;
-    cb(null, uniqueSuffix);
-  },
-});
-
-const upload = multer({ storage });
 
 // Rejestracja użytkownika
 router.post("/signup", async (req, res, next) => {
   try {
-    const { error } = signupSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ message: error.details[0].message });
-    }
-
     const { email, password } = req.body;
-    const existingUser = await User.findOne({ email });
-
-    if (existingUser) {
-      return res.status(409).json({ message: "Email in use" });
-    }
-
-    const avatarURL = gravatar.url(email, { s: "250", d: "retro" }, true);
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = await User.create({
-      email,
-      password: hashedPassword,
-      avatarURL,
-    });
+    const hashedPassword = await bcrypt.hash(password, 10); // Haszowanie hasła
+    const newUser = await User.create({ email, password: hashedPassword }); // Tworzenie użytkownika
 
     res.status(201).json({
       user: {
         email: newUser.email,
-        subscription: newUser.subscription,
-        avatarURL: newUser.avatarURL,
+        subscription: "starter",
       },
     });
   } catch (error) {
-    next(error);
+    next(error); // Przekazywanie błędów do globalnego middleware błędów
   }
 });
 
 // Logowanie użytkownika
 router.post("/login", async (req, res, next) => {
   try {
-    const { error } = signupSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ message: error.details[0].message });
-    }
-
     const { email, password } = req.body;
     const user = await User.findOne({ email });
 
@@ -88,7 +35,6 @@ router.post("/login", async (req, res, next) => {
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-
     user.token = token;
     await user.save();
 
@@ -99,55 +45,6 @@ router.post("/login", async (req, res, next) => {
         subscription: user.subscription,
       },
     });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Aktualizacja awatara użytkownika
-router.patch(
-  "/avatars",
-  auth,
-  upload.single("avatar"),
-  async (req, res, next) => {
-    try {
-      const { path: tempUpload, filename } = req.file;
-      const filePath = path.join(avatarsDir, filename);
-
-      const image = await Jimp.read(tempUpload);
-      await image.resize(250, 250).writeAsync(filePath);
-
-      await fs.unlink(tempUpload);
-
-      const avatarURL = `/avatars/${filename}`;
-      req.user.avatarURL = avatarURL;
-      await req.user.save();
-
-      res.json({ avatarURL });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-// Wylogowanie użytkownika
-router.get("/logout", auth, async (req, res, next) => {
-  try {
-    const user = req.user;
-    user.token = null;
-    await user.save();
-
-    res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Pobieranie danych obecnego użytkownika
-router.get("/current", auth, async (req, res, next) => {
-  try {
-    const { email, subscription } = req.user;
-    res.status(200).json({ email, subscription });
   } catch (error) {
     next(error);
   }

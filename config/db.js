@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+// Funkcja do połączenia z MongoDB
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI, {
@@ -7,9 +8,9 @@ const connectDB = async () => {
       useUnifiedTopology: true,
     });
     console.log("Database connection successful");
-  } catch (err) {
-    console.error("Database connection error:", err.message);
-    process.exit(1);
+  } catch (error) {
+    console.error("Database connection error:", error.message);
+    process.exit(1); // Zakończ aplikację, jeśli nie można połączyć się z bazą
   }
 };
 
