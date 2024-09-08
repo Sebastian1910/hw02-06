@@ -1,47 +1,17 @@
 const express = require("express");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const gravatar = require("gravatar");
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs/promises");
-const Jimp = require("jimp");
+const { v4: uuidv4 } = require("uuid");
 const User = require("../../models/user");
+const sendEmail = require("../../utils/sendEmail");
 const auth = require("../../middleware/auth");
 const Joi = require("joi");
+const bcrypt = require("bcryptjs");
+const gravatar = require("gravatar");
 
 const router = express.Router();
-
-const signupSchema = Joi.object({
-  email: Joi.string().email().required(),
-  password: Joi.string().min(6).required(),
-});
-
-const subscriptionSchema = Joi.object({
-  subscription: Joi.string().valid("starter", "pro", "business").required(),
-});
-
-const tmpDir = path.join(__dirname, "../../tmp");
-const avatarsDir = path.join(__dirname, "../../public/avatars");
-
-const storage = multer.diskStorage({
-  destination: tmpDir,
-  filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${file.originalname}`;
-    cb(null, uniqueSuffix);
-  },
-});
-
-const upload = multer({ storage });
 
 // Rejestracja użytkownika
 router.post("/signup", async (req, res, next) => {
   try {
-    const { error } = signupSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ message: error.details[0].message });
-    }
-
     const { email, password } = req.body;
     const existingUser = await User.findOne({ email });
 
@@ -49,6 +19,8 @@ router.post("/signup", async (req, res, next) => {
       return res.status(409).json({ message: "Email in use" });
     }
 
+    const verificationToken = uuidv4(); // Generowanie unikalnego tokena weryfikacyjnego
+    console.log("Generated verification token:", verificationToken);
     const avatarURL = gravatar.url(email, { s: "250", d: "retro" }, true);
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -56,7 +28,18 @@ router.post("/signup", async (req, res, next) => {
       email,
       password: hashedPassword,
       avatarURL,
+      verificationToken,
     });
+
+    // Wysyłanie e-maila weryfikacyjnego
+    const verifyLink = `${req.protocol}://${req.get(
+      "host"
+    )}/api/users/verify/${verificationToken}`;
+    await sendEmail(
+      email,
+      "Verify your email",
+      `Click the link to verify your email: ${verifyLink}`
+    );
 
     res.status(201).json({
       user: {
@@ -70,84 +53,57 @@ router.post("/signup", async (req, res, next) => {
   }
 });
 
-// Logowanie użytkownika
-router.post("/login", async (req, res, next) => {
+// Weryfikacja e-maila
+router.get("/verify/:verificationToken", async (req, res, next) => {
   try {
-    const { error } = signupSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ message: error.details[0].message });
+    const { verificationToken } = req.params;
+    const user = await User.findOne({ verificationToken });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    const { email, password } = req.body;
+    user.verify = true;
+    user.verificationToken = null;
+    await user.save();
+
+    res.status(200).json({ message: "Verification successful" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Ponowne wysłanie e-maila weryfikacyjnego
+router.post("/verify", async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Missing required field email" });
+    }
+
     const user = await User.findOne({ email });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ message: "Email or password is wrong" });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-
-    user.token = token;
-    await user.save();
-
-    res.status(200).json({
-      token,
-      user: {
-        email: user.email,
-        subscription: user.subscription,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Aktualizacja awatara użytkownika
-router.patch(
-  "/avatars",
-  auth,
-  upload.single("avatar"),
-  async (req, res, next) => {
-    try {
-      const { path: tempUpload, filename } = req.file;
-      const filePath = path.join(avatarsDir, filename);
-
-      const image = await Jimp.read(tempUpload);
-      await image.resize(250, 250).writeAsync(filePath);
-
-      await fs.unlink(tempUpload);
-
-      const avatarURL = `/avatars/${filename}`;
-      req.user.avatarURL = avatarURL;
-      await req.user.save();
-
-      res.json({ avatarURL });
-    } catch (error) {
-      next(error);
+    if (user.verify) {
+      return res
+        .status(400)
+        .json({ message: "Verification has already been passed" });
     }
-  }
-);
 
-// Wylogowanie użytkownika
-router.get("/logout", auth, async (req, res, next) => {
-  try {
-    const user = req.user;
-    user.token = null;
-    await user.save();
+    const verifyLink = `${req.protocol}://${req.get("host")}/api/users/verify/${
+      user.verificationToken
+    }`;
+    await sendEmail(
+      user.email,
+      "Verify your email",
+      `Click the link to verify your email: ${verifyLink}`
+    );
 
-    res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Pobieranie danych obecnego użytkownika
-router.get("/current", auth, async (req, res, next) => {
-  try {
-    const { email, subscription } = req.user;
-    res.status(200).json({ email, subscription });
+    res.status(200).json({ message: "Verification email sent" });
   } catch (error) {
     next(error);
   }
