@@ -1,11 +1,10 @@
-const mongoose = require("mongoose");
+const { Schema, model } = require("mongoose");
 
-// Schemat użytkownika
-const userSchema = new mongoose.Schema({
+const userSchema = new Schema({
   email: {
     type: String,
     required: [true, "Email is required"],
-    unique: true, // Email musi być unikalny
+    unique: true,
   },
   password: {
     type: String,
@@ -13,15 +12,24 @@ const userSchema = new mongoose.Schema({
   },
   subscription: {
     type: String,
-    enum: ["starter", "pro", "business"], // Możliwe wartości subskrypcji
-    default: "starter", // Domyślna subskrypcja to 'starter'
+    enum: ["starter", "pro", "business"],
+    default: "starter",
   },
+  avatarURL: String,
   token: {
     type: String,
-    default: null, // Token JWT, null gdy użytkownik nie jest zalogowany
+    default: null,
+  },
+  verify: {
+    type: Boolean,
+    default: false,
+  },
+  verificationToken: {
+    type: String,
+    required: [true, "Verify token is required"],
   },
 });
 
-const User = mongoose.model("User", userSchema); // Tworzenie modelu na podstawie schematu
+const User = model("User", userSchema);
 
 module.exports = User;

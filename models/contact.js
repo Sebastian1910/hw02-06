@@ -1,11 +1,9 @@
-const mongoose = require("mongoose");
-const { Schema } = mongoose;
+const { Schema, model } = require("mongoose");
 
-// Schemat kontaktów
 const contactSchema = new Schema({
   name: {
     type: String,
-    required: [true, "Set name for contact"], // Nazwa jest wymagana
+    required: [true, "Set name for contact"],
   },
   email: {
     type: String,
@@ -15,15 +13,15 @@ const contactSchema = new Schema({
   },
   favorite: {
     type: Boolean,
-    default: false, // Domyślnie kontakt nie jest ulubiony
+    default: false,
   },
   owner: {
-    type: Schema.Types.ObjectId, // Referencja do modelu użytkownika
+    type: Schema.Types.ObjectId,
     ref: "User",
-    required: true, // Każdy kontakt musi mieć właściciela
+    required: true,
   },
 });
 
-const Contact = mongoose.model("Contact", contactSchema);
+const Contact = model("Contact", contactSchema);
 
 module.exports = Contact;

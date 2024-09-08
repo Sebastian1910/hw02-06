@@ -1,52 +1,40 @@
 const express = require("express");
-const auth = require("../../middleware/auth"); // Middleware do autoryzacji
+const auth = require("../../middleware/auth");
 const Contact = require("../../models/contact");
 const router = express.Router();
 
-// Pobieranie kontaktów z paginacją i filtrowaniem
+// Pobieranie wszystkich kontaktów (GET /api/contacts)
 router.get("/", auth, async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, favorite } = req.query; // Paginacja i filtrowanie
-    const filter = { owner: req.user._id };
-
-    if (favorite) {
-      filter.favorite = favorite === "true"; // Filtrowanie po ulubionych
-    }
-
-    const contacts = await Contact.find(filter)
-      .skip((page - 1) * limit) // Paginacja
-      .limit(Number(limit)); // Limit kontaktów na stronę
-
-    res.status(200).json({ contacts });
-  } catch (error) {
-    next(error); // Przekazywanie błędów
-  }
-});
-
-// Dodawanie nowego kontaktu
-router.post("/", auth, async (req, res, next) => {
-  try {
-    const newContact = await Contact.create({
-      ...req.body,
-      owner: req.user._id,
-    }); // Tworzenie kontaktu
-    res.status(201).json(newContact);
+    const contacts = await Contact.find({ owner: req.user._id });
+    res.status(200).json(contacts);
   } catch (error) {
     next(error);
   }
 });
 
-// Usuwanie kontaktu
-router.delete("/:id", auth, async (req, res, next) => {
+// Dodawanie nowego kontaktu (POST /api/contacts)
+router.post("/", auth, async (req, res, next) => {
   try {
-    const contact = await Contact.findOneAndDelete({
-      _id: req.params.id,
+    const { name, email, phone } = req.body;
+    const contact = await Contact.create({
+      ...req.body,
       owner: req.user._id,
     });
-    if (!contact) {
+    res.status(201).json(contact);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Pobieranie kontaktu po ID (GET /api/contacts/:id)
+router.get("/:id", auth, async (req, res, next) => {
+  try {
+    const contact = await Contact.findById(req.params.id);
+    if (!contact || contact.owner.toString() !== req.user._id.toString()) {
       return res.status(404).json({ message: "Contact not found" });
     }
-    res.status(200).json({ message: "Contact deleted" });
+    res.status(200).json(contact);
   } catch (error) {
     next(error);
   }
