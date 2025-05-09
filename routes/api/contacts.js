@@ -40,35 +40,4 @@ router.get("/:id", auth, async (req, res, next) => {
   }
 });
 
-// Usuwanie kontaktu (DELETE /api/contacts/:id)
-router.delete("/:id", auth, async (req, res, next) => {
-  try {
-    const contact = await Contact.findByIdAndDelete(req.params.id);
-    if (!contact || contact.owner.toString() !== req.user._id.toString()) {
-      return res.status(404).json({ message: "Contact not found" });
-    }
-    res.status(200).json({ message: "Contact deleted" });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Aktualizacja kontaktu (PUT /api/contacts/:id)
-router.put("/:id", auth, async (req, res, next) => {
-  try {
-    const { name, email, phone, favorite } = req.body;
-    const contact = await Contact.findByIdAndUpdate(
-      req.params.id,
-      { name, email, phone, favorite },
-      { new: true }
-    );
-    if (!contact || contact.owner.toString() !== req.user._id.toString()) {
-      return res.status(404).json({ message: "Contact not found" });
-    }
-    res.status(200).json(contact);
-  } catch (error) {
-    next(error);
-  }
-});
-
 module.exports = router;

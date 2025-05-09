@@ -1,43 +1,29 @@
 const express = require("express");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const gravatar = require("gravatar");
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs/promises");
-const Jimp = require("jimp");
+const { v4: uuidv4 } = require("uuid");
 const User = require("../../models/user");
+const sendEmail = require("../../utils/sendEmail");
 const auth = require("../../middleware/auth");
 const Joi = require("joi");
+const bcrypt = require("bcryptjs");
+const gravatar = require("gravatar");
 
 const router = express.Router();
 
-const signupSchema = Joi.object({
+// Schematy walidacyjne Joi
+const registrationSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
 });
 
-const subscriptionSchema = Joi.object({
-  subscription: Joi.string().valid("starter", "pro", "business").required(),
+const resendSchema = Joi.object({
+  email: Joi.string().email().required(),
 });
-
-const tmpDir = path.join(__dirname, "../../tmp");
-const avatarsDir = path.join(__dirname, "../../public/avatars");
-
-const storage = multer.diskStorage({
-  destination: tmpDir,
-  filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${file.originalname}`;
-    cb(null, uniqueSuffix);
-  },
-});
-
-const upload = multer({ storage });
 
 // Rejestracja użytkownika
 router.post("/signup", async (req, res, next) => {
   try {
-    const { error } = signupSchema.validate(req.body);
+    // Walidacja danych rejestracyjnych
+    const { error } = registrationSchema.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.details[0].message });
     }
@@ -45,19 +31,38 @@ router.post("/signup", async (req, res, next) => {
     const { email, password } = req.body;
     const existingUser = await User.findOne({ email });
 
+    // Sprawdzenie, czy e-mail jest już używany
     if (existingUser) {
       return res.status(409).json({ message: "Email in use" });
     }
 
+    // Generowanie tokena weryfikacyjnego
+    const verificationToken = uuidv4();
+    console.log("Generated verification token:", verificationToken);
+
+    // Tworzenie awatara i hashowanie hasła
     const avatarURL = gravatar.url(email, { s: "250", d: "retro" }, true);
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Tworzenie nowego użytkownika
     const newUser = await User.create({
       email,
       password: hashedPassword,
       avatarURL,
+      verificationToken,
     });
 
+    // Wysyłanie e-maila weryfikacyjnego
+    const verifyLink = `${req.protocol}://${req.get(
+      "host"
+    )}/api/users/verify/${verificationToken}`;
+    await sendEmail(
+      email,
+      "Verify your email",
+      `Click the link to verify your email: ${verifyLink}`
+    );
+
+    // Zwracanie odpowiedzi po pomyślnej rejestracji
     res.status(201).json({
       user: {
         email: newUser.email,
@@ -66,89 +71,80 @@ router.post("/signup", async (req, res, next) => {
       },
     });
   } catch (error) {
+    console.error("Error during user registration:", error);
     next(error);
   }
 });
 
-// Logowanie użytkownika
-router.post("/login", async (req, res, next) => {
+// Weryfikacja e-maila
+router.get("/verify/:verificationToken", async (req, res, next) => {
   try {
-    const { error } = signupSchema.validate(req.body);
+    const { verificationToken } = req.params;
+    const user = await User.findOne({ verificationToken });
+
+    // Sprawdzenie, czy użytkownik został znaleziony
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Ustawianie flagi weryfikacji i usunięcie tokena
+    user.verify = true;
+    user.verificationToken = null;
+    await user.save();
+
+    // Zwrócenie sukcesu po weryfikacji
+    res.status(200).json({ message: "Verification successful" });
+  } catch (error) {
+    console.error("Error during email verification:", error);
+    next(error);
+  }
+});
+
+// Ponowne wysłanie e-maila weryfikacyjnego
+router.post("/verify", async (req, res, next) => {
+  try {
+    // Walidacja e-maila
+    const { error } = resendSchema.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.details[0].message });
     }
 
-    const { email, password } = req.body;
+    const { email } = req.body;
     const user = await User.findOne({ email });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ message: "Email or password is wrong" });
+    // Sprawdzenie, czy użytkownik istnieje
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-
-    user.token = token;
-    await user.save();
-
-    res.status(200).json({
-      token,
-      user: {
-        email: user.email,
-        subscription: user.subscription,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Aktualizacja awatara użytkownika
-router.patch(
-  "/avatars",
-  auth,
-  upload.single("avatar"),
-  async (req, res, next) => {
-    try {
-      const { path: tempUpload, filename } = req.file;
-      const filePath = path.join(avatarsDir, filename);
-
-      const image = await Jimp.read(tempUpload);
-      await image.resize(250, 250).writeAsync(filePath);
-
-      await fs.unlink(tempUpload);
-
-      const avatarURL = `/avatars/${filename}`;
-      req.user.avatarURL = avatarURL;
-      await req.user.save();
-
-      res.json({ avatarURL });
-    } catch (error) {
-      next(error);
+    // Sprawdzenie, czy użytkownik już został zweryfikowany
+    if (user.verify) {
+      return res
+        .status(400)
+        .json({ message: "Verification has already been passed" });
     }
-  }
-);
 
-// Wylogowanie użytkownika
-router.get("/logout", auth, async (req, res, next) => {
-  try {
-    const user = req.user;
-    user.token = null;
-    await user.save();
+    // Sprawdzenie, czy token weryfikacyjny istnieje
+    if (!user.verificationToken) {
+      return res.status(400).json({
+        message: "Verification token not available. Please re-register.",
+      });
+    }
 
-    res.status(204).send();
+    // Wysyłanie ponownie e-maila weryfikacyjnego
+    const verifyLink = `${req.protocol}://${req.get("host")}/api/users/verify/${
+      user.verificationToken
+    }`;
+    await sendEmail(
+      user.email,
+      "Verify your email",
+      `Click the link to verify your email: ${verifyLink}`
+    );
+
+    // Zwracanie sukcesu po ponownym wysłaniu wiadomości
+    res.status(200).json({ message: "Verification email sent" });
   } catch (error) {
-    next(error);
-  }
-});
-
-// Pobieranie danych obecnego użytkownika
-router.get("/current", auth, async (req, res, next) => {
-  try {
-    const { email, subscription } = req.user;
-    res.status(200).json({ email, subscription });
-  } catch (error) {
+    console.error("Error during verification email resending:", error);
     next(error);
   }
 });
